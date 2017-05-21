@@ -84,52 +84,53 @@ a tuple of (command, word) to be used by flyspell-do-correct."
   "Use helm for flyspell correction.
 Adapted from `flyspell-correct-word-before-point'."
   (interactive)
-  ;; use the correct dictionary
-  (flyspell-accept-buffer-local-defs)
-  (let ((cursor-location (point))
-        (word (flyspell-get-word)))
-    (if (consp word)
-        (let ((start (car (cdr word)))
-              (end (car (cdr (cdr word))))
-              (word (car word))
-              poss ispell-filter)
-          ;; now check spelling of word.
-          (ispell-send-string "%\n")	;put in verbose mode
-          (ispell-send-string (concat "^" word "\n"))
-          ;; wait until ispell has processed word
-          (while (progn
-                   (accept-process-output ispell-process)
-                   (not (string= "" (car ispell-filter)))))
-          ;; Remove leading empty element
-          (setq ispell-filter (cdr ispell-filter))
-          ;; ispell process should return something after word is sent.
-          ;; Tag word as valid (i.e., skip) otherwise
-          (or ispell-filter
-              (setq ispell-filter '(*)))
-          (if (consp ispell-filter)
-              (setq poss (ispell-parse-output (car ispell-filter))))
-          (cond
-           ((or (eq poss t) (stringp poss))
-            ;; don't correct word
-            (message "%s is correct" (funcall ispell-format-word-function word))
-            t)
-           ((null poss)
-            ;; ispell error
-            (error "Ispell: error in Ispell process"))
-           (t
-            ;; The word is incorrect, we have to propose a replacement.
-            (let ((res (helm-flyspell (nth 2 poss) word)))
-              (cond ((stringp res)
-                     (flyspell-do-correct res poss word cursor-location start end cursor-location))
-                    (t
-                     (let ((cmd (car res))
-                           (wrd (cdr res)))
-                       (if (string= wrd word)
-                           (flyspell-do-correct cmd poss wrd cursor-location start end cursor-location)
-                         (progn
-                           (flyspell-do-correct cmd poss wrd cursor-location start end cursor-location)
-                           (flyspell-do-correct wrd poss word cursor-location start end cursor-location)))))))))
-          (ispell-pdict-save t)))))
+  (save-excursion
+    ;; use the correct dictionary
+    (flyspell-accept-buffer-local-defs)
+     (let ((cursor-location (point))
+           (word (flyspell-get-word)))
+       (if (consp word)
+           (let ((start (car (cdr word)))
+                 (end (car (cdr (cdr word))))
+                 (word (car word))
+                 poss ispell-filter)
+             ;; now check spelling of word.
+             (ispell-send-string "%\n")	;put in verbose mode
+             (ispell-send-string (concat "^" word "\n"))
+             ;; wait until ispell has processed word
+             (while (progn
+                      (accept-process-output ispell-process)
+                      (not (string= "" (car ispell-filter)))))
+             ;; Remove leading empty element
+             (setq ispell-filter (cdr ispell-filter))
+             ;; ispell process should return something after word is sent.
+             ;; Tag word as valid (i.e., skip) otherwise
+             (or ispell-filter
+                 (setq ispell-filter '(*)))
+             (if (consp ispell-filter)
+                 (setq poss (ispell-parse-output (car ispell-filter))))
+             (cond
+              ((or (eq poss t) (stringp poss))
+               ;; don't correct word
+               (message "%s is correct" (funcall ispell-format-word-function word))
+               t)
+              ((null poss)
+               ;; ispell error
+               (error "Ispell: error in Ispell process"))
+              (t
+               ;; The word is incorrect, we have to propose a replacement.
+               (let ((res (helm-flyspell (nth 2 poss) word)))
+                 (cond ((stringp res)
+                        (flyspell-do-correct res poss word cursor-location start end cursor-location))
+                       (t
+                        (let ((cmd (car res))
+                              (wrd (cdr res)))
+                          (if (string= wrd word)
+                              (flyspell-do-correct cmd poss wrd cursor-location start end cursor-location)
+                            (progn
+                              (flyspell-do-correct cmd poss wrd cursor-location start end cursor-location)
+                              (flyspell-do-correct wrd poss word cursor-location start end cursor-location)))))))))
+             (ispell-pdict-save t))))))
 
 (provide 'helm-flyspell)
 ;;; helm-flyspell.el ends here
